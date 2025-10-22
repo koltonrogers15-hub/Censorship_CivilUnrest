@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Heatmaps with Terrain</title>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      #map {
+        height: 100vh;
+        width: 100%;
+      }
+      #floating-panel {
+        position: absolute;
+        top: 10px;
+        left: 25%;
+        z-index: 5;
+        background: #fff;
+        border: 1px solid #999;
+        padding: 5px;
+        font-family: system-ui, sans-serif;
+      }
+      #basemap-panel {
+        position: absolute;
+        top: 10px;
+        right: 5%;
+        z-index: 5;
+        background: #fff;
+        border: 1px solid #999;
+        padding: 5px;
+        font-family: system-ui, sans-serif;
+      }
+      button {
+        margin-right: 6px;
+      }
+    </style>
+    <script src="./censorpoints.js"></script>
+    <script src="./midterm.js"></script>
+  </head>
+  <body>
+    <div id="floating-panel">
+      <button id="toggle-heatmap">Political Events Heatmap</button>
+      <button id="toggle-heatmap2">Censorship Points</button>
+    </div>
+
+    <div id="basemap-panel">
+      <button id="btn-roadmap">Roadmap</button>
+      <button id="btn-satellite">Satellite</button>
+      <button id="btn-terrain">Terrain</button>
+    </div>
+
+    <div id="map"></div>
+
+    <script>
+      let map, heatmap, heatmap2;
+      let censorshipMarkers = [];
+
+      function initMap() {
+        map = new google.maps.Map(document.getElementById("map"), {
+          zoom: 4,
+          center: { lat: 20.5937, lng: 78.9629 },
+          mapTypeControl: true,
+          mapTypeId: google.maps.MapTypeId.ROADMAP,
+        });
+
+        const infowindow = new google.maps.InfoWindow();
+
+        (window.censorshipData || []).forEach((d) => {
+          const marker = new google.maps.Marker({
+            position: { lat: d.lat, lng: d.lon },
+            map: map,
+            title: `${d.country} – ${d.Platform} (${d.year})`,
+          });
+
+          const contentString =
+            '<div id="content">' +
+            `<h2>${d.country}</h2>` +
+            `<div><b>Year:</b> ${d.year}</div>` +
+            `<div><b>Political System:</b> ${d.Political_System}</div>` +
+            `<div><b>Platform:</b> ${d.Platform}</div>` +
+            `<div><b>Reason:</b> ${d.Reason}</div>` +
+            "</div>";
+
+          marker.addListener("click", () => {
+            map.setZoom(6);
+            map.setCenter(marker.getPosition());
+            infowindow.setContent(contentString);
+            infowindow.open({ anchor: marker, map });
+          });
+
+          censorshipMarkers.push(marker);
+        });
+
+        heatmap = new google.maps.visualization.HeatmapLayer({
+          data: toPoints(window.objs || []),
+          map,
+          gradient: [
+            "rgba(0, 255, 255, 0)",
+            "rgba(0, 255, 255, 1)",
+            "rgba(0, 191, 255, 1)",
+            "rgba(0, 127, 255, 1)",
+            "rgba(0, 63, 255, 1)",
+            "rgba(0, 0, 255, 1)",
+            "rgba(0, 0, 223, 1)",
+            "rgba(0, 0, 191, 1)",
+            "rgba(0, 0, 159, 1)",
+            "rgba(0, 0, 127, 1)",
+            "rgba(63, 0, 91, 1)",
+            "rgba(127, 0, 63, 1)",
+            "rgba(191, 0, 31, 1)",
+            "rgba(255, 0, 0, 1)",
+          ],
+        });
+
+        heatmap2 = new google.maps.visualization.HeatmapLayer({
+          data: toPoints(window.wh || []),
+          map,
+        });
+
+        document
+          .getElementById("toggle-heatmap")
+          .addEventListener("click", () => {
+            heatmap.setMap(heatmap.getMap() ? null : map);
+          });
+
+        document
+          .getElementById("toggle-heatmap2")
+          .addEventListener("click", () => {
+            const visible = censorshipMarkers[0]?.getMap() !== null;
+            censorshipMarkers.forEach((m) => m.setMap(visible ? null : map));
+          });
+
+        document.getElementById("btn-roadmap").addEventListener("click", () => {
+          map.setMapTypeId(google.maps.MapTypeId.ROADMAP);
+        });
+        document
+          .getElementById("btn-satellite")
+          .addEventListener("click", () => {
+            map.setMapTypeId(google.maps.MapTypeId.SATELLITE);
+          });
+        document.getElementById("btn-terrain").addEventListener("click", () => {
+          map.setMapTypeId(google.maps.MapTypeId.TERRAIN);
+        });
+      }
+
+      function toPoints(arr) {
+        return (arr || [])
+          .filter(
+            (o) =>
+              o &&
+              (o.lat != null || o.Lat != null) &&
+              (o.lon != null || o.Lon != null || o.lng != null || o.Lng != null)
+          )
+          .map((o) => {
+            const lat = Number(o.lat ?? o.Lat);
+            const lng = Number(o.lng ?? o.Lng ?? o.lon ?? o.Lon);
+            return new google.maps.LatLng(lat, lng);
+          });
+      }
+
+      window.initMap = initMap;
+    </script>
+
+    <script
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA5-WFrv3YDyetW74v65ZtlZ-ylKa_n7V0&loading=async&libraries=visualization&callback=initMap"
+      async
+      defer
+    ></script>
+  </body>
+</html>

@@ -1,0 +1,85 @@
+<script src="./midterm.js"></script>
+
+<script>
+  let map, heatmap;
+
+  // Will be filled from JSON
+  let objs = []; // for first heatmap
+  let wh = []; // for second heatmap
+
+  async function initMap() {
+    const { Map } = await google.maps.importLibrary("maps");
+
+    const myLatlng = { lat: 41.3114, lng: -105.5911 };
+    const map = new google.maps.Map(document.getElementById("map"), {
+      zoom: 4,
+      center: myLatlng,
+      // mapId: "YOUR_MAP_ID", // optional
+    });
+
+    // --- LOAD YOUR JSON (local file or URL) ---
+    // Replace './data1.json' and './data2.json' with your actual sources
+    try {
+      const [a, b] = await Promise.all([
+        fetch("./data1.json").then((r) => r.json()),
+        fetch("./data2.json").then((r) => r.json()),
+      ]);
+      // Assign to arrays the viewer expects
+      objs = Array.isArray(a) ? a : [];
+      wh = Array.isArray(b) ? b : [];
+    } catch (e) {
+      console.error("Failed to load JSON", e);
+    }
+
+    // --- CREATE HEATMAPS ---
+    heatmap = new google.maps.visualization.HeatmapLayer({
+      data: getPoints(objs),
+      map: map,
+    });
+
+    const heatmap2 = new google.maps.visualization.HeatmapLayer({
+      data: getPoints(wh),
+      map: map,
+      gradient: [
+        "rgba(0, 255, 255, 0)",
+        "rgba(0, 255, 255, 1)",
+        "rgba(0, 191, 255, 1)",
+        "rgba(0, 127, 255, 1)",
+        "rgba(0, 63, 255, 1)",
+        "rgba(0, 0, 255, 1)",
+        "rgba(0, 0, 223, 1)",
+        "rgba(0, 0, 191, 1)",
+        "rgba(0, 0, 159, 1)",
+        "rgba(0, 0, 127, 1)",
+        "rgba(63, 0, 91, 1)",
+        "rgba(127, 0, 63, 1)",
+        "rgba(191, 0, 31, 1)",
+        "rgba(255, 0, 0, 1)",
+      ],
+    });
+
+    // Buttons
+    document.getElementById("toggle-heatmap").addEventListener("click", () => {
+      heatmap.setMap(heatmap.getMap() ? null : map);
+    });
+
+    document.getElementById("toggle-heatmap2").addEventListener("click", () => {
+      heatmap2.setMap(heatmap2.getMap() ? null : map);
+    });
+
+    // Build WeightedLocation array (keeps weight===0!)
+    function getPoints(arr) {
+      // Accepts objects with lat + (lon or lng) + optional weight
+      return arr
+        .filter((o) => o && o.lat != null && (o.lon != null || o.lng != null))
+        .map((o) => {
+          const lng = o.lng != null ? o.lng : o.lon; // support both keys
+          const w = o.weight == null ? 1 : Number(o.weight); // keep 0, default 1
+          return {
+            location: new google.maps.LatLng(Number(o.lat), Number(lng)),
+            weight: w,
+          };
+        });
+    }
+  }
+</script>
